@@ -1,4 +1,3 @@
-import java.awt.desktop.SystemSleepEvent;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -7,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 public class Main {
     static Chessboard board = new Chessboard();
     public static void main(String[] args) {
-        System.out.println("WELCOME TO CHESS!\n\n1. watch a random game of chess (moves randomly selected)\n2. play a game of chess locally\n\nNOTE: promotion moves are denoted by <startpos-endpos-piececode>\nPiececodes:\nn: knight\nb: bishop\nr: rook\nq: queen\nExample promotion to knight: a7-a8-n");
+        System.out.println("WELCOME TO CHESS!\n\n1. watch a random game of chess (at least in my ide it is quite finicky - don't click on anything or it might stop)\n2. play a game of chess locally\n\nNOTE: promotion moves are denoted by <startpos-endpos=piececode>\nPiececodes:\nn: knight\nb: bishop\nr: rook\nq: queen\nExample promotion to knight: a7-a8=n");
         Scanner scanner = new Scanner(System.in);
         switch (scanner.nextLine()) {
             case "1":
@@ -23,25 +22,31 @@ public class Main {
     }
     static void randomGame() {
         final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-        executorService.scheduleAtFixedRate(Main::randomMove, 0, 1, TimeUnit.SECONDS);
+        executorService.scheduleAtFixedRate(() -> {
+            randomMove();
+            printBoard();
+            if (board.isGameOver()) {
+                System.out.println("jeff");
+                executorService.shutdown();
+            }
+        }, 0, 1, TimeUnit.SECONDS);
     }
     static void randomMove() {
-        printBoard();
-        if (board.isGameOver()) {
-            final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-            executorService.shutdown();
-        }
         ArrayList<Move> moves = board.getMoves();
         board.makeMove(moves.get(new Random().nextInt(moves.size())));
     }
     static void gameLoop() {
         printBoard();
+        if (board.isGameOver()) return;
         System.out.println("Options:\nMake move: -m <startpos-endpos> (Example: -m a2-a4)\nView moves at square: -s <square> (Example: -s a2)\nView all moves: -a\nUndo last move: -u");
         Scanner scanner = new Scanner(System.in);
         String response = scanner.nextLine();
-        String prefix = response.split(" ")[0];
+        String[] parts = response.split(" ");
+        String prefix = parts[0];
         String args = "";
-        if (response.length() > 2) args = response.split(" ")[1];
+        if (parts.length > 1) {
+            args = parts[1];
+        }
 
         switch (prefix) {
             case "-m":
@@ -69,9 +74,22 @@ public class Main {
         gameLoop();
     }
     static Move getMoveFromCoords(String coords) {
+        final String newCoords;
+        if (coords.contains("=n")) {
+            newCoords = coords.substring(0, 5) + " FLAGS: 16";
+        } else if (coords.contains("=b")) {
+            newCoords = coords.substring(0, 5) + " FLAGS: 8";
+        } else if (coords.contains("=q")) {
+            newCoords = coords.substring(0, 5) + " FLAGS: 2";
+        } else if (coords.contains("=r")) {
+            newCoords = coords.substring(0, 5) + " FLAGS: 4";
+        } else {
+            newCoords = coords;
+        }
+
         Optional<Move> move = board.getMoves()
                 .stream()
-                .filter(m -> m.toString().contains(coords))
+                .filter(m -> m.toString().contains(newCoords))
                 .findFirst();
 
         return move.orElse(null);
@@ -105,5 +123,16 @@ public class Main {
             System.out.println();
         }
         System.out.println("  a b c d e f g h");
+        if (board.isGameOver()) {
+            if (board.isCheckmate()) {
+                System.out.println("CHECKMATE!");
+            }
+            else if (board.isStalemate()) {
+                System.out.println("STALEMATE!");
+            }
+            else if (board.isInsufficientMaterial()) {
+                System.out.println("INSUFFICIENT MATERIAL!");
+            }
+        }
     }
 }

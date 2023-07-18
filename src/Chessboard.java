@@ -1,4 +1,6 @@
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class Chessboard {
@@ -8,7 +10,8 @@ public class Chessboard {
             int flags,
             int enPassantSquare,
             int pieceCaptured,
-            int[] castlingRights
+            int[] castlingRights,
+            int pieceType
     ) {}
     public static class CASTLEFLAGS {
         private static final int NONE = 0;
@@ -102,9 +105,6 @@ public class Chessboard {
     public Chessboard() {
         populateBoard(DEFAULT_BOARD);
     }
-    public boolean isGameOver() {
-        return false;
-    }
     private static int indexTo0x88(int index) {
         return (index >> 3) // get rank
                 * 16 // multiply by rank length of 0x88 board
@@ -188,7 +188,8 @@ public class Chessboard {
                 move.flags,
                 enPassantSquare,
                 pieceCaptured,
-                castlingRights.clone()
+                castlingRights.clone(),
+                pieceMoved
         ));
 
         if (move.flags == Move.FLAGS.BIG_PAWN_MOVE) {
@@ -199,13 +200,25 @@ public class Chessboard {
             this.enPassantSquare = -1;
         }
 
-        if (pieceMoved == PAWN) {
+        if (Math.abs(pieceMoved) == PAWN) {
             if (move.flags == Move.FLAGS.EP) {
                 final int difference = turn ? 16 : -16;
                 _boardData[move.endPos + difference] = 0;
             }
+            else if (move.flags == Move.FLAGS.Q_PROMOTION) {
+                this._boardData[move.endPos] = turn ? 5 : -5;
+            }
+            else if (move.flags == Move.FLAGS.R_PROMOTION) {
+                this._boardData[move.endPos] = turn ? 4 : -4;
+            }
+            else if (move.flags == Move.FLAGS.B_PROMOTION) {
+                this._boardData[move.endPos] = turn ? 3 : -3;
+            }
+            else if (move.flags == Move.FLAGS.N_PROMOTION) {
+                this._boardData[move.endPos] = turn ? 2 : -2;
+            }
         }
-        else if (pieceMoved == ROOK) {
+        else if (Math.abs(pieceMoved) == ROOK) {
             if (move.startPos == (turn ? 112 : 0)) {
                 castlingRights[turn ? 0 : 1] &= ~CASTLEFLAGS.QUEENSIDE; // remove queenside castling rights
             }
@@ -213,8 +226,7 @@ public class Chessboard {
                 castlingRights[turn ? 0 : 1] &= ~CASTLEFLAGS.KINGSIDE; // remove kingside castling rights
             }
         }
-
-        if (Math.abs(pieceMoved) == KING) {
+        else if (Math.abs(pieceMoved) == KING) {
             this.castlingRights[turn ? 0 : 1] = 0;
             updateKingPositions();
 
@@ -231,14 +243,13 @@ public class Chessboard {
     }
     public void undoMove() {
         final PastMove move = _history.remove(_history.size() - 1);
-        _boardData[move.startPos] = _boardData[move.endPos];
+        _boardData[move.startPos] = move.pieceType;
         _boardData[move.endPos] = move.pieceCaptured;
 
         if (move.flags == Move.FLAGS.EP) {
             _boardData[move.endPos + (turn ? -16 : 16)] = turn ? 1 : -1;
         }
-
-        if (Math.abs(_boardData[move.startPos]) == KING) {
+        if (Math.abs(move.pieceType) == KING) {
             updateKingPositions();
 
             if (move.flags == Move.FLAGS.K_CASTLE) { // move rooks back to original position if castled
@@ -309,6 +320,24 @@ public class Chessboard {
                         moves.add(new Move(index, tempIndex, Move.FLAGS.EP));
                     }
                 }
+                List<Move> movesToRemove = new ArrayList<Move>();
+                List<Move> movesToAdd = new ArrayList<Move>();
+
+                for (Move move : moves) {
+                    if (getRank(move.endPos) == (turn ? 0 : 7)) {
+                        Move[] promotionMoves = {
+                                new Move(move.startPos, move.endPos, Move.FLAGS.Q_PROMOTION),
+                                new Move(move.startPos, move.endPos, Move.FLAGS.N_PROMOTION),
+                                new Move(move.startPos, move.endPos, Move.FLAGS.B_PROMOTION),
+                                new Move(move.startPos, move.endPos, Move.FLAGS.R_PROMOTION)
+                        };
+                        movesToRemove.add(move);
+                        movesToAdd.addAll(Arrays.asList(promotionMoves));
+                    }
+                }
+
+                moves.removeAll(movesToRemove);
+                moves.addAll(movesToAdd);
                 break;
             case KING: // no break statement, falls through to case KNIGHT
                 int currentCastlingRights = castlingRights[turn ? 0 : 1];
@@ -373,6 +402,36 @@ public class Chessboard {
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
     }
+    public boolean isGameOver() {
+        return isCheckmate() || isStalemate() || isInsufficientMaterial();
+    }
+    public boolean isCheckmate() {
+        return this._moves.size() == 0 && isKingAttacked(turn);
+    }
+    public boolean isStalemate() { return this._moves.size() == 0 && !isKingAttacked(turn); }
+    public boolean isInsufficientMaterial() {
+        int[] material = new int[2];
+        for (int i = 0; i < 120; i++) {
+            if (!isValidIndex(i)) {
+                i += 7;
+                continue;
+            }
+            final int piece = _boardData[i];
+            final boolean team = piece > 0;
+            final int type = Math.abs(piece);
+
+            if (type == QUEEN || type == PAWN || type == ROOK) {
+                return false;
+            }
+            else if (type == BISHOP || type == ROOK) {
+                material[team ? 0 : 1] += 1;
+                if (material[team ? 0 : 1] > 1) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     public boolean isKingAttacked(boolean team) {
         return attacked(_kings[team ? 0 : 1], !team);
     }
@@ -419,7 +478,6 @@ public class Chessboard {
         updateKingPositions();
         _moves = genMoves();
     }
-
     private void updateKingPositions() {
         for (int i = 0; i < 120; i++) {
             if (!isValidIndex(i)) {

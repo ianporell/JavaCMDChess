@@ -1,4 +1,4 @@
 # JavaCMDChess
 Play chess in the command line
 
-unfinished as of right now
+No 50 move rule check currently

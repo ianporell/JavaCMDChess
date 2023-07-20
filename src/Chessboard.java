@@ -72,6 +72,7 @@ public class Chessboard {
             new int[] {-17, -15, 17, 15, -16, -1, 16, 1}, // QUEEN
             new int[] {-17, -16, -15, -1, 1, 17, 16, 15} // KING
     };
+
     private static final int[] DEFAULT_BOARD = new int[] {
         -ROOK, -KNIGHT, -BISHOP, -QUEEN, -KING, -BISHOP, -KNIGHT, -ROOK,
         -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN, -PAWN,
@@ -82,6 +83,7 @@ public class Chessboard {
         PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN, PAWN,
         ROOK, KNIGHT, BISHOP, QUEEN, KING, BISHOP, KNIGHT, ROOK
     };
+
     public int[] getBoardData() {
         return arrayFrom0x88(_boardData);
     }
@@ -298,7 +300,7 @@ public class Chessboard {
 
                     // big pawn move
                     tempIndex = index + 32 * multiplier;
-                    if (_boardData[tempIndex] == EMPTY && getRank(index) == (turn ? 6 : 1)) {
+                    if (getRank(index) == (turn ? 6 : 1) && _boardData[tempIndex] == EMPTY) {
                         moves.add(new Move(index, tempIndex, Move.FLAGS.BIG_PAWN_MOVE));
                     }
                 }
@@ -426,11 +428,11 @@ public class Chessboard {
             else if (type == BISHOP || type == ROOK) {
                 material[team ? 0 : 1] += 1;
                 if (material[team ? 0 : 1] > 1) {
-                    return true;
+                    return false;
                 }
             }
         }
-        return false;
+        return true;
     }
     public boolean isKingAttacked(boolean team) {
         return attacked(_kings[team ? 0 : 1], !team);

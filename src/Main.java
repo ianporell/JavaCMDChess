@@ -26,7 +26,6 @@ public class Main {
             randomMove();
             printBoard();
             if (board.isGameOver()) {
-                System.out.println("jeff");
                 executorService.shutdown();
             }
         }, 0, 1, TimeUnit.SECONDS);

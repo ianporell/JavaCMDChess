@@ -425,7 +425,7 @@ public class Chessboard {
             if (type == QUEEN || type == PAWN || type == ROOK) {
                 return false;
             }
-            else if (type == BISHOP || type == ROOK) {
+            else if (type == BISHOP || type == KNIGHT) {
                 material[team ? 0 : 1] += 1;
                 if (material[team ? 0 : 1] > 1) {
                     return false;

@@ -102,8 +102,8 @@ public class Chessboard {
     public boolean turn = WHITE;
     private int[] _boardData = new int[120]; // 0x88 board representation
     private ArrayList<Move> _moves = new ArrayList<Move>(); // moves at current position
-    private ArrayList<PastMove> _history = new ArrayList<PastMove>();
-    private int[] _kings = new int[] {-1, -1}; // idx 0 = white, 1 = black
+    private final ArrayList<PastMove> _history = new ArrayList<PastMove>();
+    private final int[] _kings = new int[] {-1, -1}; // idx 0 = white, 1 = black
     public Chessboard() {
         populateBoard(DEFAULT_BOARD);
     }
@@ -258,7 +258,7 @@ public class Chessboard {
                 _boardData[turn ? 7 : 119] = turn ? -4 : 4;
                 _boardData[turn ? 5 : 117] = 0;
             }
-            else if (move.flags == Move.FLAGS.K_CASTLE) {
+            else if (move.flags == Move.FLAGS.Q_CASTLE) {
                 _boardData[turn ? 0 : 112] = turn ? -4 : 4;
                 _boardData[turn ? 3 : 115] = 0;
             }
